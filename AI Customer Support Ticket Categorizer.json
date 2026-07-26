@@ -1,0 +1,1044 @@
+{
+  "name": "AI Customer Support Ticket Categorizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b30b97ad-8658-44b7-b7fa-8ec022284ef9",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        496
+      ],
+      "id": "b624e0d4-976a-4087-9a36-e2d891ea4664",
+      "name": "Webhook",
+      "webhookId": "b30b97ad-8658-44b7-b7fa-8ec022284ef9"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Subject: {{ $json.subject }}\nComplete Message: {{ $json.message }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a senior customer support manager.\n\nAnalyze this ticket.\n\nDetermine:\n\n1. Category\n\nChoose ONE:\n\nTechnical Issue\nBilling\nSales Inquiry\nFeature Request\nBug Report\nGeneral Question\nComplaint\n\n2. Priority\n\nChoose ONE:\n\nCritical\nHigh\nMedium\nLow\n\n3. Sentiment\n\nChoose ONE:\n\nPositive\nNeutral\nNegative\n\n4. Assigned Team\nChoose ONE:\nTechnical Support (if category is: Technical issue OR Bug Report)\nBilling Team (if category is: Billing)\nSales Team (if category is: Sales Inquiry)\nCustomer Success (if category is: Feature Request OR Complaint)\nGeneral Support (if category is: General Question)\n\n5. Summary\n\nReturn ONLY valid JSON.\n\n{\n\"category\":\"\",\n\"priority\":\"\",\n\"sentiment\":\"\",\n\"assigned_team\":\"\",\n\"summary\":\"\"\n}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        432,
+        496
+      ],
+      "id": "05a99ffd-08e5-47db-b0b5-e6485b24109b",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\"category\":\"\",\n\"priority\":\"\",\n\"sentiment\":\"\",\n\"assigned_team\":\"\",\n\"summary\":\"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        720
+      ],
+      "id": "33403c6a-cf5e-4219-84d6-0cb5cd729b95",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fields = $json.body;\n\n/** const getField = (label) => {\n  const field = body.find(f => f.label === label);\n  return field ? field.value : null;\n}; **/\n\nreturn [{\n  json: {\n    name: fields.Name,\n    email: fields.Email,\n    subject: fields.Subject,\n    message: fields.Message\n    \n    /**\n    name: getField(\"Name\"),\n    email: getField(\"Email\"),\n    subject: getField(\"Subject\"),\n    message: getField(\"Message\")\n    **/\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        496
+      ],
+      "id": "ccc9f911-9c66-407d-b5e1-2b84ac39ad70",
+      "name": "Extract Form Values"
+    },
+    {
+      "parameters": {
+        "jsCode": "function toTitleCase(text) {\n  return text\n    .toLowerCase()\n    .replace(/\\s+/g, ' ')\n    .trim()\n    .replace(/\\b\\w/g, c => c.toUpperCase());\n}\n\nreturn [\n  {\n    json: {\n      name: toTitleCase($json.name),\n      email: $json.email.trim().toLowerCase(),\n      subject: toTitleCase($json.subject),\n      message: $json.message.replace(/\\s+/g, ' ').trim()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        496
+      ],
+      "id": "9cf633dd-4f02-4bab-bf75-c028db952959",
+      "name": "Formating Data"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.assigned_team }}",
+                    "rightValue": "Technical Support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "600e264d-1b99-41a8-8a0c-c386a80e08f4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Technical Support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ab1da2d9-e078-4527-a40e-1a121ecd2faf",
+                    "leftValue": "={{ $json.output.assigned_team }}",
+                    "rightValue": "Billing Team",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Billing Team"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7170ee55-7674-4399-9e1a-ab4aaca89ec4",
+                    "leftValue": "={{ $json.output.assigned_team }}",
+                    "rightValue": "Sales Team",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Sales Team"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1a7f6fc1-f843-4cce-bd38-1a47940586f5",
+                    "leftValue": "={{ $json.output.assigned_team }}",
+                    "rightValue": "Customer Success",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Customer Success"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6d58e125-5bf5-4784-b1c2-9a8be162e5e5",
+                    "leftValue": "={{ $json.output.assigned_team }}",
+                    "rightValue": "General Support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General Support"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        416
+      ],
+      "id": "605bebce-771c-4a11-b31e-ac6a619b4e92",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "example@your-domain.com",
+        "subject": "New Technical Support Ticket",
+        "emailType": "text",
+        "message": "=Customer: {{ $('Formating Data').item.json.name }}\nEmail: {{ $('Formating Data').item.json.email }}\nCategory: {{ $json.output.category }}\nPriority: {{ $json.output.priority }}\n\nSummary: {{ $json.output.summary }}\n\nOriginal Message: {{ $('Formating Data').item.json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        112
+      ],
+      "id": "a6bbf549-f62b-4b77-9b55-c945ee50588a",
+      "name": "Send a message",
+      "webhookId": "e9d99225-2f4f-4040-bae2-ad93a78d00b5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "example@your-domain.com",
+        "subject": "New Billing Ticket",
+        "emailType": "text",
+        "message": "=Customer: {{ $('Formating Data').item.json.name }}\nEmail: {{ $('Formating Data').item.json.email }}\nCategory: {{ $json.output.category }}\nPriority: {{ $json.output.priority }}\n\nSummary: {{ $json.output.summary }}\n\nOriginal Message: {{ $('Formating Data').item.json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        304
+      ],
+      "id": "52990d5d-dc88-44bb-bd96-171c7f33ffc0",
+      "name": "Send a message1",
+      "webhookId": "e9d99225-2f4f-4040-bae2-ad93a78d00b5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "example@your-domain.com",
+        "subject": "New Sales Ticket",
+        "emailType": "text",
+        "message": "=Customer: {{ $('Formating Data').item.json.name }}\nEmail: {{ $('Formating Data').item.json.email }}\nCategory: {{ $json.output.category }}\nPriority: {{ $json.output.priority }}\n\nSummary: {{ $json.output.summary }}\n\nOriginal Message: {{ $('Formating Data').item.json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        496
+      ],
+      "id": "7688af89-cb59-4e7d-b016-17ecd75cee63",
+      "name": "Send a message2",
+      "webhookId": "e9d99225-2f4f-4040-bae2-ad93a78d00b5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "example@your-domain.com",
+        "subject": "New Customer Success Ticket",
+        "emailType": "text",
+        "message": "=Customer: {{ $('Formating Data').item.json.name }}\nEmail: {{ $('Formating Data').item.json.email }}\nCategory: {{ $json.output.category }}\nPriority: {{ $json.output.priority }}\n\nSummary: {{ $json.output.summary }}\n\nOriginal Message: {{ $('Formating Data').item.json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        688
+      ],
+      "id": "0ce90896-a7e4-47d9-acf9-161c4e657387",
+      "name": "Send a message3",
+      "webhookId": "e9d99225-2f4f-4040-bae2-ad93a78d00b5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "example@your-domain.com",
+        "subject": "New General Support Ticket",
+        "emailType": "text",
+        "message": "=Customer: {{ $('Formating Data').item.json.name }}\nEmail: {{ $('Formating Data').item.json.email }}\nCategory: {{ $json.output.category }}\nPriority: {{ $json.output.priority }}\n\nSummary: {{ $json.output.summary }}\n\nOriginal Message: {{ $('Formating Data').item.json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        880
+      ],
+      "id": "2ab52d81-5cf0-4f54-b866-7ddfdb25d706",
+      "name": "Send a message4",
+      "webhookId": "e9d99225-2f4f-4040-bae2-ad93a78d00b5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "5VgA7Z0GSVYoraL1",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in Basic LLM Chain"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        416,
+        336
+      ],
+      "id": "33be4863-8087-4c9b-81ea-f615f97bdb3d",
+      "name": "Error in Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Nothing Matched"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        784,
+        832
+      ],
+      "id": "1ee8873a-b106-4a44-a09f-07961945fc55",
+      "name": "Nothing Matched"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in Sending Email"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        16
+      ],
+      "id": "a084504f-30fb-4166-9b60-707484c966ad",
+      "name": "Error in Sending Email"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Error in creating record"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        336
+      ],
+      "id": "62cd1c0c-46ce-443d-a21a-ac6b883213a7",
+      "name": "Error in creating record"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1664,
+        448
+      ],
+      "id": "0c512800-b80c-4294-81dc-2b953fe5336f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appQ4RWWdlC2enYoF",
+          "mode": "list",
+          "cachedResultName": "Customer Support Ticket Categorizer",
+          "cachedResultUrl": "https://airtable.com/appQ4RWWdlC2enYoF"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblB4hyCJy0SiWePV",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appQ4RWWdlC2enYoF/tblB4hyCJy0SiWePV"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer Name": "={{ $('Formating Data').item.json.name }}",
+            "Email": "={{ $('Formating Data').item.json.email }}",
+            "Category": "={{ $('Basic LLM Chain').item.json.output.category }}",
+            "Priority": "={{ $('Basic LLM Chain').item.json.output.priority }}",
+            "Sentiment": "={{ $('Basic LLM Chain').item.json.output.sentiment }}",
+            "Assigned Team": "={{ $('Basic LLM Chain').item.json.output.assigned_team }}",
+            "Summary": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+            "Subject": "={{ $('Formating Data').item.json.subject }}",
+            "Status": "New"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Ticket ID",
+              "displayName": "Ticket ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Technical Issue",
+                  "value": "Technical Issue"
+                },
+                {
+                  "name": "Billing",
+                  "value": "Billing"
+                },
+                {
+                  "name": "Sales Inquiry",
+                  "value": "Sales Inquiry"
+                },
+                {
+                  "name": "Feature Request",
+                  "value": "Feature Request"
+                },
+                {
+                  "name": "Bug Report",
+                  "value": "Bug Report"
+                },
+                {
+                  "name": "General Question",
+                  "value": "General Question"
+                },
+                {
+                  "name": "Complaint",
+                  "value": "Complaint"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Critical",
+                  "value": "Critical"
+                },
+                {
+                  "name": "High",
+                  "value": "High"
+                },
+                {
+                  "name": "Medium",
+                  "value": "Medium"
+                },
+                {
+                  "name": "Low",
+                  "value": "Low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Positive",
+                  "value": "Positive"
+                },
+                {
+                  "name": "Neutral",
+                  "value": "Neutral"
+                },
+                {
+                  "name": "Negative",
+                  "value": "Negative"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Assigned Team",
+              "displayName": "Assigned Team",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Technical Support",
+                  "value": "Technical Support"
+                },
+                {
+                  "name": "Billing Team",
+                  "value": "Billing Team"
+                },
+                {
+                  "name": "Sales Team",
+                  "value": "Sales Team"
+                },
+                {
+                  "name": "Customer Success",
+                  "value": "Customer Success"
+                },
+                {
+                  "name": "General Support",
+                  "value": "General Support"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Resolved",
+                  "value": "Resolved"
+                },
+                {
+                  "name": "Archived",
+                  "value": "Archived"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        496
+      ],
+      "id": "40e8e5db-a1ee-401e-ac8e-5f92613dc2fd",
+      "name": "Create a record on airtable",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "JakJ5QqnRCltt6YG",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        720
+      ],
+      "id": "30a75ad4-c70f-4517-b29b-75dafa798987",
+      "name": "models/gemini-3-flash-preview",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        752
+      ],
+      "id": "139268d9-662c-4640-9f0b-0c63f1a2ac95",
+      "name": "models/gemini-2.5-flash",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "thnOcnvjIC2zdqMH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.anabiyah.online",
+            "user-agent": "PostmanRuntime/7.54.0",
+            "content-length": "579",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cache-control": "no-cache",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "52.23.177.192",
+            "cf-ipcountry": "US",
+            "cf-ray": "a1f549fa0b94215a-IAD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-warp-tag-id": "9beede12-3c4b-4b23-add8-02092ee71aac",
+            "connection": "keep-alive",
+            "content-type": "multipart/form-data; boundary=----WebKitFormBoundaryxoPhsnhPLBBwQA8c",
+            "postman-token": "615772de-7dbd-4a8e-b21e-0d297f073983",
+            "x-forwarded-for": "45.194.89.184,172.16.210.73,52.23.177.192",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "Name": "Raza Ali",
+            "Email": "razaaliabid87@gmail.com",
+            "Subject": "I need a help",
+            "Message": "My internet connection is not working. There is a red light blinking on my router. I need to fix it as soon as possible."
+          },
+          "webhookUrl": "https://n8n.anabiyah.online/webhook-test/b30b97ad-8658-44b7-b7fa-8ec022284ef9",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Form Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error in Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Form Values": {
+      "main": [
+        [
+          {
+            "node": "Formating Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formating Data": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nothing Matched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error in Sending Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Error in Sending Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Error in Sending Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ],
+        [
+          {
+            "node": "Error in Sending Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message4": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ],
+        [
+          {
+            "node": "Error in Sending Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Create a record on airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record on airtable": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Error in creating record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "models/gemini-3-flash-preview": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "models/gemini-2.5-flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "55d5d22f-d560-4990-9afd-16016f7443bc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "22a94396d635bdc18c036410c0b06da7851292b894f2255bca52f69454134ddc"
+  },
+  "nodeGroups": [],
+  "id": "mF703rwsrMYyDarB",
+  "tags": []
+}
